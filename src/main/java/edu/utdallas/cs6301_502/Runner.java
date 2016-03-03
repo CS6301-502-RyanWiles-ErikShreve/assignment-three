@@ -38,6 +38,7 @@ import com.atlassian.util.concurrent.Promise;
 
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreAnnotations.LemmaAnnotation;
+import edu.stanford.nlp.ling.CoreAnnotations.PartOfSpeechAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 import edu.stanford.nlp.ling.CoreLabel;
@@ -98,17 +99,24 @@ class Runner {
 		try {
 			// SETUP
 			// Begin NLP example code
-			String text = "This World is an amazing place";
+			String text = "This World is an amazing place, I was so amazed.";
 			Properties props = new Properties();
 			props.setProperty("annotators", "tokenize, ssplit, pos, lemma, parse, sentiment");
 			StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
 
 			Annotation annotation = pipeline.process(text);
 			List<CoreMap> sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
-//			for (CoreMap sentence : sentences) {
-//				String sentiment = sentence.get(SentimentCoreAnnotations.SentimentClass.class);
-//				System.out.println("Sentiment: " + sentiment + "\t" + sentence);
-//			}
+			for (CoreMap sentence : sentences) {
+			//	String sentiment = sentence.get(SentimentCoreAnnotations.SentimentClass.class);
+			//	System.out.println("Sentiment: " + sentiment + "\t" + sentence);
+				
+				for (CoreLabel token: sentence.get(TokensAnnotation.class))
+				{
+					String pos = token.get(PartOfSpeechAnnotation.class);
+					System.out.println("POS: " + pos + "\t" + token.originalText());
+				}
+				
+			}
 
 			for (String lemmas : lemmatize(pipeline, text)) {
 				System.out.println("Lemmas: " + lemmas);
@@ -213,6 +221,17 @@ class Runner {
 		return lemmas;
 	}
 
+	class IssueData
+	{
+		public int numSentences;
+		public int numTerms;
+		public int numNouns;
+		public int numVerbs;
+		public int numAdjectives;
+		public int numAdverbs;
+	}
+	
+	
 	private void debug(String line) {
 		if (this.debug) {
 			System.out.println(line);
