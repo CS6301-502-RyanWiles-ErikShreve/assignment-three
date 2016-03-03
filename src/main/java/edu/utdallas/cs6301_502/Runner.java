@@ -50,23 +50,19 @@ class Runner {
 	@Option(name = "-d", usage = "print debug information to console")
 	private boolean debug = false;
 
-	//	@Option(name = "-c", usage = "create new index")
-	private static boolean create = false;
+	@Option(name = "-n", usage = "maximum number of issues to download. use -1 for all.")
+	private int maxNumIssues = 10;
 
-	//	@Option(name = "-src", usage = "base folder containing .java source to index")
-	private String baseFolder = "";
+	@Option(name = "-s", usage = "URL of JIRA server")
+	private String jiraServerURL = "https://issues.apache.org/jira";
 
-	//	@Option(name = "-i", usage = "index location")
-	private String indexPath = "";
-
-	//	@Option(name = "-g", usage = "gold set file")
-	private String goldSetFile = "";
-
+	@Option(name = "-p", usage = "name of project on JIRA server")
+	private String projectName = "SPARK";
+	
 	// receives other command line parameters than options
 	@Argument
 	private List<String> arguments = new ArrayList<String>();
 
-	private static LuceneUtil luceneUtil;
 	private TextScrubber textScrubber;
 
 	public static void main(String... args) throws Exception {
@@ -81,16 +77,6 @@ class Runner {
 		try {
 			// parse the arguments.
 			parser.parseArgument(args);
-
-			//			// check if enough arguments are given.
-			//			if (goldSetFile.isEmpty())
-			//				throw new CmdLineException(parser, "No gold set file was provided");
-			//
-			//			if (indexPath.isEmpty())
-			//				throw new CmdLineException(parser, "No index location was provided");
-			//
-			//			if (create && baseFolder.isEmpty())
-			//				throw new CmdLineException(parser, "No base folder was provided, but create new index was specified");
 
 		} catch (CmdLineException e) {
 			// report an error message.
@@ -111,8 +97,6 @@ class Runner {
 	public void run() {
 		try {
 			// SETUP
-			luceneUtil = new LuceneUtil(create, indexPath);
-
 			// Begin NLP example code
 			String text = "This World is an amazing place";
 			Properties props = new Properties();
@@ -132,16 +116,16 @@ class Runner {
 			// End NLP example code
 			
 			// Begin JIRA example code
-			URI jiraServerUri = URI.create("https://issues.apache.org/jira");
+			URI jiraServerUri = URI.create(jiraServerURL);
 			final AsynchronousJiraRestClientFactory factory = new AsynchronousJiraRestClientFactory();
 			final JiraRestClient restClient = factory.create(jiraServerUri, new AnonymousAuthenticationHandler());
 
 			try {
-				Promise<Project> promiseProject = restClient.getProjectClient().getProject("SPARK");
+				Promise<Project> promiseProject = restClient.getProjectClient().getProject(projectName);
 				Project project = promiseProject.get();
 				System.out.println(project.getName() + ": " + project.getDescription());
 
-				printAllIssues(restClient, "SPARK");
+				printAllIssues(restClient, projectName);
 			} finally {
 				restClient.close();
 			}
@@ -153,11 +137,25 @@ class Runner {
 
 	public void printAllIssues(JiraRestClient restClient, String projectKey) {
 		int startIndex = 0;
-		int maxResults = 100; // seems to be the max number of results possible
-		int totalIssuesRead = 0;
-		
+		int maxResults = 0;
+		int totalIssuesRead = 0;				
 		boolean done = false;
+		
 		do {
+			
+			if (maxNumIssues > 0)
+			{
+				int toRead = maxNumIssues-totalIssuesRead;
+				if (toRead < 0)
+				{
+					maxResults = 100;
+				}
+				else
+				{
+					maxResults = Math.min(100, toRead);
+				}
+			}
+						
 			Promise<SearchResult> searchJqlPromise = restClient.getSearchClient().searchJql("project = " + projectKey, maxResults, startIndex, null);
 			System.out.println(searchJqlPromise.claim().getTotal());
 			
@@ -166,7 +164,13 @@ class Runner {
 				totalIssuesRead++;
 				System.out.println(issue.getKey() + " - " + issue.getSummary());
 			}
-			done = totalIssuesRead == searchResult.getTotal();
+			
+			if (totalIssuesRead == searchResult.getTotal() ||
+				totalIssuesRead >= maxNumIssues)
+			{
+				done = true;
+			}
+			
 			startIndex = totalIssuesRead;
 			System.out.println(totalIssuesRead + " / " + searchResult.getTotal() + ": " + done);
 		} while (!done);
