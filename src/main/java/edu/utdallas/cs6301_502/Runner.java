@@ -17,6 +17,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -66,6 +67,11 @@ class Runner {
 	@Argument
 	private List<String> arguments = new ArrayList<String>();
 
+	
+	private CorpusData titleCorpusData;
+	private CorpusData descriptionCorpusData;
+	private CorpusData titleAndDescriptionCorpusData;
+	
 	private TextScrubber textScrubber;
 
 	public static void main(String... args) throws Exception {
@@ -99,14 +105,260 @@ class Runner {
 
 	public void run() {
 		try {
-
-			CoreNLPExample();
-			jiraExample();
+			titleCorpusData = new CorpusData("Title Corpus");
+			descriptionCorpusData = new CorpusData("Description Corpus");
+			titleAndDescriptionCorpusData = new CorpusData("Title & Description Corpus");
+			
+			
+			processJiraProject();
+			printStats();
+			
+			//CoreNLPExample();
+			//jiraExample();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
+	private void processJiraProject()
+	{
+		URI jiraServerUri = URI.create(jiraServerURL);
+		final AsynchronousJiraRestClientFactory factory = new AsynchronousJiraRestClientFactory();
+		final JiraRestClient restClient = factory.create(jiraServerUri, new AnonymousAuthenticationHandler());
+
+		try {
+			processAllIssues(restClient, projectName);
+		} finally {
+			try {
+				restClient.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	private void processAllIssues(JiraRestClient restClient, String projectKey) {
+		int startIndex = 0;
+		int maxResults = 0;
+		int totalIssuesRead = 0;				
+		boolean done = false;
+		
+		do {
+			
+			if (maxNumIssues > 0)
+			{
+				int toRead = maxNumIssues-totalIssuesRead;
+				if (toRead < 0)
+				{
+					maxResults = 100;
+				}
+				else
+				{
+					maxResults = Math.min(100, toRead);
+				}
+			}
+						
+			Promise<SearchResult> searchJqlPromise = restClient.getSearchClient().searchJql("project = " + projectKey, maxResults, startIndex, null);
+			
+			SearchResult searchResult = searchJqlPromise.claim();
+			for (Issue issue : searchResult.getIssues()) {
+				totalIssuesRead++;
+							
+				String summary = issue.getSummary(); // TODO preprocess summary using textscrubber
+				if (summary != null)
+				{
+					collectStats(titleCorpusData, issue.getId(), summary);
+				}
+				else
+				{
+					titleCorpusData.numEmptyIssues++;
+				}
+								
+				String description = issue.getDescription(); // TODO preprocess description using textscrubber
+				
+				if (description != null)
+				{
+					collectStats(descriptionCorpusData, issue.getId(), description);
+				}
+				else
+				{
+					descriptionCorpusData.numEmptyIssues++;
+				}
+
+				
+				if (summary != null || description != null)
+				{
+					String text = "";
+					
+					if (summary != null)
+					{
+						text += summary + " ";
+					}
+					
+					if (description != null)
+					{
+						text += description;
+					}
+					
+					collectStats(titleAndDescriptionCorpusData, issue.getId(), text);
+				}
+				else
+				{
+					titleAndDescriptionCorpusData.numEmptyIssues++;
+				}
+				
+					
+				System.out.println(issue.getKey());
+			}
+			
+			if (totalIssuesRead == searchResult.getTotal() ||
+				totalIssuesRead >= maxNumIssues)
+			{
+				done = true;
+			}
+			
+			startIndex = totalIssuesRead;
+		} while (!done);
+	}
+	
+	private void collectStats(CorpusData corpusData, Long idNum, String text)
+	{
+		IssueData id = new IssueData();
+		id.issueNumber = idNum;
+		
+		Properties props = new Properties();
+		props.setProperty("annotators", "tokenize, ssplit, pos, lemma");
+		StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+
+		Annotation annotation = pipeline.process(text);
+		List<CoreMap> sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
+		for (CoreMap sentence : sentences) {
+		
+			id.numSentences++;
+			
+			for (CoreLabel token: sentence.get(TokensAnnotation.class))
+			{
+				id.numTerms++;
+				
+				String pos = token.get(PartOfSpeechAnnotation.class);
+				
+				if (pos.startsWith("NN"))
+				{
+					id.numNouns++;
+					if (corpusData.nounMap.containsKey(token.lemma()))
+					{
+						corpusData.nounMap.put(token.lemma(), corpusData.nounMap.get(token.lemma()) + 1);
+					}
+					else
+					{
+						corpusData.nounMap.put(token.lemma(), (long) 1);
+					}
+				}
+				else if (pos.startsWith("VB"))
+				{
+					id.numVerbs++;
+					if (corpusData.verbMap.containsKey(token.lemma()))
+					{
+						corpusData.verbMap.put(token.lemma(), corpusData.verbMap.get(token.lemma()) + 1);
+					}
+					else
+					{
+						corpusData.verbMap.put(token.lemma(), (long) 1);
+					}
+				}				
+				else if (pos.startsWith("JJ"))
+				{
+					id.numAdjectives++;
+					if (corpusData.adjectiveMap.containsKey(token.lemma()))
+					{
+						corpusData.adjectiveMap.put(token.lemma(), corpusData.adjectiveMap.get(token.lemma()) + 1);
+					}
+					else
+					{
+						corpusData.adjectiveMap.put(token.lemma(), (long) 1);
+					}
+				}
+				else if (pos.startsWith("RB"))
+				{
+					id.numAdverbs++;
+					if (corpusData.adverbMap.containsKey(token.lemma()))
+					{
+						corpusData.adverbMap.put(token.lemma(), corpusData.adverbMap.get(token.lemma()) + 1);
+					}
+					else
+					{
+						corpusData.adverbMap.put(token.lemma(), (long) 1);
+					}
+				}
+				
+				
+				//System.out.println("POS: " + pos + "\t" + token.originalText());
+			}
+			
+		}
+		
+		corpusData.issues.add(id);
+	}
+	
+	private void printStats()
+	{
+		System.out.println("Results for " + projectName + " on " + jiraServerURL);
+		
+		printCorpusStats(titleCorpusData);
+		System.out.println("--------------------------------------------------");
+		printCorpusStats(descriptionCorpusData);
+		System.out.println("--------------------------------------------------");
+		printCorpusStats(titleAndDescriptionCorpusData);
+		System.out.println("--------------------------------------------------");
+		
+		System.out.println("Top 10 For System: TODO - print these values, need to COMBINE AND sort the hashmaps");
+		System.out.println("Nouns: ");
+		System.out.println("Verbs: ");
+		System.out.println("Adjectives: ");
+		System.out.println("Adverbs: ");
+	}
+	
+	private void printCorpusStats(CorpusData corpusData)
+	{
+		System.out.println("For " + corpusData.getName());
+		System.out.println("Total # Bug Reports on Server: " + corpusData.numEmptyIssues + corpusData.issues.size());
+		System.out.println("Number of Bug Reports with no data after preprocessing: " + corpusData.numEmptyIssues);
+		System.out.println("Number of Bug Reports in corpus: " + corpusData.issues.size());
+		
+		long totalSentences = 0;
+		long totalTerms = 0;
+		long totalNouns = 0;
+		long totalVerbs = 0;
+		long totalAdjectives = 0;
+		long totalAdverbs = 0;
+		
+		for (IssueData issue : corpusData.issues)
+		{
+			totalSentences += issue.numSentences;
+			totalTerms += issue.numTerms;
+			totalNouns += issue.numNouns;
+			totalVerbs += issue.numVerbs;
+			totalAdjectives += issue.numAdjectives;
+			totalAdverbs += issue.numAdverbs;
+		}
+
+		
+		System.out.println("Avg(Med) Sentences: " + totalSentences/corpusData.issues.size() + "(todo)");		
+		System.out.println("Avg(Med) Terms: " + totalTerms/corpusData.issues.size() + "(todo)");		
+		System.out.println("Avg(Med) Nouns: " + totalNouns/corpusData.issues.size() + "(todo)");
+		System.out.println("Avg(Med) Verbs: " + totalVerbs/corpusData.issues.size() + "(todo)");
+		System.out.println("Avg(Med) Adjectives: " + totalAdjectives/corpusData.issues.size() + "(todo)");
+		System.out.println("Avg(Med) Adverbs: " + totalAdverbs/corpusData.issues.size() + "(todo)");
+		
+		
+		System.out.println("Top 10 For Corpus: TODO - print these values, need to sort the hashmaps");
+		System.out.println("Nouns: ");
+		System.out.println("Verbs: ");
+		System.out.println("Adjectives: ");
+		System.out.println("Adverbs: ");
+		
+	}
+	
 	private void CoreNLPExample()
 	{
 		// Begin NLP example code
@@ -229,14 +481,47 @@ class Runner {
 		return lemmas;
 	}
 
+	class CorpusData
+	{
+		private String corpusName;
+		public List<IssueData> issues;
+		public int numEmptyIssues;
+		// TODO: Not sure if hashmap is best structure. We will need to sort these to get the top ten of each.
+		HashMap<String, Long> nounMap;
+		HashMap<String, Long> verbMap;
+		HashMap<String, Long> adjectiveMap;
+		HashMap<String, Long> adverbMap;
+		
+		public CorpusData(String name) {
+			super();
+			
+			corpusName = name;
+			
+			issues = new ArrayList<IssueData>();
+			numEmptyIssues = 0;
+			nounMap = new HashMap<String, Long>();
+			verbMap = new HashMap<String, Long>();
+			adjectiveMap = new HashMap<String, Long>();
+			adverbMap = new HashMap<String, Long>();
+		}
+		
+		public String getName()
+		{
+			return corpusName;
+		}
+		
+		
+	}
+	
 	class IssueData
 	{
-		public int numSentences;
-		public int numTerms;
-		public int numNouns;
-		public int numVerbs;
-		public int numAdjectives;
-		public int numAdverbs;
+		public long issueNumber;
+		public long numSentences;
+		public long numTerms;
+		public long numNouns;
+		public long numVerbs;
+		public long numAdjectives;
+		public long numAdverbs;
 	}
 	
 	
