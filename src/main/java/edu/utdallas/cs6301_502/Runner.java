@@ -321,7 +321,7 @@ class Runner {
 	private void printCorpusStats(CorpusData corpusData)
 	{
 		System.out.println("For " + corpusData.getName());
-		System.out.println("Total # Bug Reports on Server: " + corpusData.numEmptyIssues + corpusData.issues.size());
+		System.out.println("Total # Bug Reports on Server: " + (corpusData.numEmptyIssues + corpusData.issues.size()));
 		System.out.println("Number of Bug Reports with no data after preprocessing: " + corpusData.numEmptyIssues);
 		System.out.println("Number of Bug Reports in corpus: " + corpusData.issues.size());
 		
