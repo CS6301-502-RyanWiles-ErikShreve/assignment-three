@@ -14,11 +14,13 @@ package edu.utdallas.cs6301_502;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
@@ -97,52 +99,58 @@ class Runner {
 
 	public void run() {
 		try {
-			// SETUP
-			// Begin NLP example code
-			String text = "This World is an amazing place, I was so amazed.";
-			Properties props = new Properties();
-			props.setProperty("annotators", "tokenize, ssplit, pos, lemma, parse, sentiment");
-			StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
 
-			Annotation annotation = pipeline.process(text);
-			List<CoreMap> sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
-			for (CoreMap sentence : sentences) {
-			//	String sentiment = sentence.get(SentimentCoreAnnotations.SentimentClass.class);
-			//	System.out.println("Sentiment: " + sentiment + "\t" + sentence);
-				
-				for (CoreLabel token: sentence.get(TokensAnnotation.class))
-				{
-					String pos = token.get(PartOfSpeechAnnotation.class);
-					System.out.println("POS: " + pos + "\t" + token.originalText());
-				}
-				
-			}
-
-			for (String lemmas : lemmatize(pipeline, text)) {
-				System.out.println("Lemmas: " + lemmas);
-			}
-			// End NLP example code
-			
-			// Begin JIRA example code
-			URI jiraServerUri = URI.create(jiraServerURL);
-			final AsynchronousJiraRestClientFactory factory = new AsynchronousJiraRestClientFactory();
-			final JiraRestClient restClient = factory.create(jiraServerUri, new AnonymousAuthenticationHandler());
-
-			try {
-				Promise<Project> promiseProject = restClient.getProjectClient().getProject(projectName);
-				Project project = promiseProject.get();
-				System.out.println(project.getName() + ": " + project.getDescription());
-
-				printAllIssues(restClient, projectName);
-			} finally {
-				restClient.close();
-			}
-
+			CoreNLPExample();
+			jiraExample();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
+	private void CoreNLPExample()
+	{
+		// Begin NLP example code
+		String text = "This World is an amazing place, I was so amazed.";
+		Properties props = new Properties();
+		props.setProperty("annotators", "tokenize, ssplit, pos, lemma, parse, sentiment");
+		StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+
+		Annotation annotation = pipeline.process(text);
+		List<CoreMap> sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
+		for (CoreMap sentence : sentences) {
+		//	String sentiment = sentence.get(SentimentCoreAnnotations.SentimentClass.class);
+		//	System.out.println("Sentiment: " + sentiment + "\t" + sentence);
+			
+			for (CoreLabel token: sentence.get(TokensAnnotation.class))
+			{
+				String pos = token.get(PartOfSpeechAnnotation.class);
+				System.out.println("POS: " + pos + "\t" + token.originalText());
+			}
+			
+		}
+
+		for (String lemmas : lemmatize(pipeline, text)) {
+			System.out.println("Lemmas: " + lemmas);
+		}
+	}
+
+	private void jiraExample() throws InterruptedException, ExecutionException, IOException
+	{
+		URI jiraServerUri = URI.create(jiraServerURL);
+		final AsynchronousJiraRestClientFactory factory = new AsynchronousJiraRestClientFactory();
+		final JiraRestClient restClient = factory.create(jiraServerUri, new AnonymousAuthenticationHandler());
+
+		try {
+			Promise<Project> promiseProject = restClient.getProjectClient().getProject(projectName);
+			Project project = promiseProject.get();
+			System.out.println(project.getName() + ": " + project.getDescription());
+
+			printAllIssues(restClient, projectName);
+		} finally {
+			restClient.close();
+		}
+	}
+	
 	public void printAllIssues(JiraRestClient restClient, String projectKey) {
 		int startIndex = 0;
 		int maxResults = 0;
