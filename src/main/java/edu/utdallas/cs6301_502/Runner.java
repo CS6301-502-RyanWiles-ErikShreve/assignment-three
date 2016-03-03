@@ -312,10 +312,10 @@ class Runner {
 		System.out.println("--------------------------------------------------");
 		
 		System.out.println("Top 10 For System: TODO - print these values, need to COMBINE AND sort the hashmaps");
-		System.out.println("Nouns: ");
-		System.out.println("Verbs: ");
-		System.out.println("Adjectives: ");
-		System.out.println("Adverbs: ");
+		System.out.println("Nouns: (todo)");
+		System.out.println("Verbs: (todo)");
+		System.out.println("Adjectives: (todo)");
+		System.out.println("Adverbs: (todo)");
 	}
 	
 	private void printCorpusStats(CorpusData corpusData)
@@ -352,10 +352,10 @@ class Runner {
 		
 		
 		System.out.println("Top 10 For Corpus: TODO - print these values, need to sort the hashmaps");
-		System.out.println("Nouns: ");
-		System.out.println("Verbs: ");
-		System.out.println("Adjectives: ");
-		System.out.println("Adverbs: ");
+		System.out.println("Nouns: (todo)");
+		System.out.println("Verbs: (todo)");
+		System.out.println("Adjectives: (todo)");
+		System.out.println("Adverbs: (todo)");
 		
 	}
 	
