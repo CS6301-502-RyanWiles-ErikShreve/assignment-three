@@ -7,22 +7,42 @@ import java.util.Set;
 
 public class TextScrubber {
 
-	private Set<String> keywordSet = new HashSet<String>();
+	private Set<String> preProcessStopWords = new HashSet<String>();
 	private Set<String> stopWords = new HashSet<String>();
 	private int minWordSize;
-	
+	private boolean stemWords = false;
+	private boolean includeCamelCase = false;
 
-	public TextScrubber(Set<String> keywordSet, Set<String> stopWords, int minWordSize) {
+	public TextScrubber(Set<String> stopWords, int minWordSize) {
 		super();
-		this.keywordSet = keywordSet;
-		this.stopWords = stopWords;
-		this.minWordSize = minWordSize;		
+		this.stopWords.addAll(stopWords);
+		this.minWordSize = minWordSize;
 	}
-	
-	public List<String> scrub(String text)  {
+
+	public TextScrubber addStopWords(Set<String> stopWords) {
+		this.stopWords.addAll(stopWords);
+		return this;
+	}
+
+	public TextScrubber addPreProcessStopWords(Set<String> preProcessStopWords) {
+		this.preProcessStopWords.addAll(preProcessStopWords);
+		return this;
+	}
+
+	public TextScrubber setStemWord(boolean stemWords) {
+		this.stemWords = stemWords;
+		return this;
+	}
+
+	public TextScrubber setIncludeCamelCase(boolean includeCamelCase) {
+		this.includeCamelCase = includeCamelCase;
+		return this;
+	}
+
+	public List<String> scrub(String text) {
 
 		PorterStemmer stemmer = new PorterStemmer();
-		
+
 		List<String> output = new ArrayList<String>();
 
 		text = text.trim();
@@ -31,6 +51,10 @@ public class TextScrubber {
 			return output;
 		}
 
+		for (String preProcessWord : preProcessStopWords) {
+			text = text.replaceAll(preProcessWord, " ");
+		}
+		
 		// check for line with only // comments
 		if (text.startsWith("//")) {
 			text = text.substring(2).trim();
@@ -63,17 +87,22 @@ public class TextScrubber {
 		if (!text.isEmpty()) {
 			for (String word : text.split("\\s+")) {
 				if (word.length() >= minWordSize) {
-					if (!keywordSet.contains(word.toLowerCase()) && !stopWords.contains(word.toLowerCase())) {
-						output.add(stemmer.stem(word));
+					if (!stopWords.contains(word.toLowerCase())) {
 
-						String[] explodedWord = word.split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])");
+						String[] explodedWord = word.split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])"); // CamelCase splitter
 
 						if (explodedWord.length > 1) {
+							if (includeCamelCase) {
+								output.add((stemWords) ? stemmer.stem(word) : word);
+							}
+
 							for (String w : explodedWord) {
-								if (w.length() >= minWordSize && !stopWords.contains(word.toLowerCase())) { 
-									output.add(stemmer.stem(w));
+								if (w.length() >= minWordSize && !stopWords.contains(w.toLowerCase())) {
+									output.add((stemWords) ? stemmer.stem(w) : w);
 								}
 							}
+						} else {
+							output.add((stemWords) ? stemmer.stem(word) : word);
 						}
 					}
 				}
@@ -82,5 +111,10 @@ public class TextScrubber {
 
 		return output;
 	}
-	
+
+	public static void main(String... args) {
+		for (String s : "nonCamelCased".split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])")) {
+			System.out.println(s);
+		}
+	}
 }

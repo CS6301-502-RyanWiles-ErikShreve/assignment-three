@@ -18,9 +18,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import org.kohsuke.args4j.Argument;
@@ -29,7 +31,6 @@ import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
 import com.atlassian.jira.rest.client.api.JiraRestClient;
-import com.atlassian.jira.rest.client.api.JiraRestClientFactory;
 import com.atlassian.jira.rest.client.api.domain.BasicProject;
 import com.atlassian.jira.rest.client.api.domain.Issue;
 import com.atlassian.jira.rest.client.api.domain.Project;
@@ -40,14 +41,12 @@ import com.atlassian.jira.rest.client.internal.async.AsynchronousJiraRestClientF
 import com.atlassian.util.concurrent.Promise;
 
 import edu.stanford.nlp.ling.CoreAnnotations;
-import edu.stanford.nlp.ling.CoreAnnotations.LemmaAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.PartOfSpeechAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
-import edu.stanford.nlp.sentiment.SentimentCoreAnnotations;
 import edu.stanford.nlp.util.CoreMap;
 
 class Runner {
@@ -105,6 +104,10 @@ class Runner {
 
 	public void run() {
 		try {
+			textScrubber = new TextScrubber(loadWords("stop_words.xml"), 2)
+					.addStopWords(loadWords("java_keywords.xml"))
+					.addPreProcessStopWords(loadWords("jira_notation_elements.xml"));
+			
 			titleCorpusData = new CorpusData("Title Corpus");
 			descriptionCorpusData = new CorpusData("Description Corpus");
 			titleAndDescriptionCorpusData = new CorpusData("Title & Description Corpus");
@@ -165,48 +168,11 @@ class Runner {
 				totalIssuesRead++;
 							
 				String summary = issue.getSummary(); // TODO preprocess summary using textscrubber
-				if (summary != null)
-				{
-					collectStats(titleCorpusData, issue.getId(), summary);
-				}
-				else
-				{
-					titleCorpusData.numEmptyIssues++;
-				}
-								
 				String description = issue.getDescription(); // TODO preprocess description using textscrubber
 				
-				if (description != null)
-				{
-					collectStats(descriptionCorpusData, issue.getId(), description);
-				}
-				else
-				{
-					descriptionCorpusData.numEmptyIssues++;
-				}
-
-				
-				if (summary != null || description != null)
-				{
-					String text = "";
-					
-					if (summary != null)
-					{
-						text += summary + " ";
-					}
-					
-					if (description != null)
-					{
-						text += description;
-					}
-					
-					collectStats(titleAndDescriptionCorpusData, issue.getId(), text);
-				}
-				else
-				{
-					titleAndDescriptionCorpusData.numEmptyIssues++;
-				}
-				
+				processData(titleCorpusData, issue.getId(), new String[] {summary});				
+				processData(descriptionCorpusData, issue.getId(), new String[] {description});				
+				processData(titleAndDescriptionCorpusData, issue.getId(), new String[] {summary, description});				
 					
 				System.out.println(issue.getKey());
 			}
@@ -219,6 +185,21 @@ class Runner {
 			
 			startIndex = totalIssuesRead;
 		} while (!done);
+	}
+	
+	private void processData(CorpusData corpusData, Long idNum, String... textArr) {
+		String text = "";
+		for (String s : textArr) {
+			if (s != null) {
+				text += s + " ";
+			}
+		}
+		text = text.trim();
+		if (!text.isEmpty()) {
+			collectStats(corpusData, idNum, text);
+		} else {
+			corpusData.numEmptyIssues++;
+		}
 	}
 	
 	private void collectStats(CorpusData corpusData, Long idNum, String text)
@@ -529,6 +510,29 @@ class Runner {
 		if (this.debug) {
 			System.out.println(line);
 		}
+	}
+
+	private Set<String> loadWords(String resource) {
+		Set<String> words = new HashSet<String>();
+
+		ClassLoader classLoader = getClass().getClassLoader();
+		System.out.println("classloader == null: " + (classLoader == null));
+		File file = new File(classLoader.getResource(resource).getFile());
+
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader(file));
+			while (reader.ready()) {
+				String line = reader.readLine().trim();
+				if (line.startsWith("<word>") && line.endsWith("</word>"))
+					words.add(line.substring(6, line.length() - 7));
+
+			}
+			reader.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return words;
 	}
 
 	private String readResourceFile(String resourceName) {
