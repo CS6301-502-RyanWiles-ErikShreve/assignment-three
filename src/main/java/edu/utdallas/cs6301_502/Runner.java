@@ -16,7 +16,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -284,7 +287,7 @@ class Runner {
 	private void printStats()
 	{
 		System.out.println("Results for " + projectName + " on " + jiraServerURL);
-		
+			
 		printCorpusStats(titleCorpusData);
 		System.out.println("--------------------------------------------------");
 		printCorpusStats(descriptionCorpusData);
@@ -305,6 +308,12 @@ class Runner {
 		System.out.println("Total # Bug Reports on Server: " + (corpusData.numEmptyIssues + corpusData.issues.size()));
 		System.out.println("Number of Bug Reports with no data after preprocessing: " + corpusData.numEmptyIssues);
 		System.out.println("Number of Bug Reports in corpus: " + corpusData.issues.size());
+	
+		
+	//	for (IssueData i : corpusData.issues)
+	//	{
+	//		System.out.println(i.toString());
+	//	}
 		
 		long totalSentences = 0;
 		long totalTerms = 0;
@@ -322,22 +331,171 @@ class Runner {
 			totalAdjectives += issue.numAdjectives;
 			totalAdverbs += issue.numAdverbs;
 		}
-
 		
-		System.out.println("Avg(Med) Sentences: " + totalSentences/corpusData.issues.size() + "(todo)");		
-		System.out.println("Avg(Med) Terms: " + totalTerms/corpusData.issues.size() + "(todo)");		
-		System.out.println("Avg(Med) Nouns: " + totalNouns/corpusData.issues.size() + "(todo)");
-		System.out.println("Avg(Med) Verbs: " + totalVerbs/corpusData.issues.size() + "(todo)");
-		System.out.println("Avg(Med) Adjectives: " + totalAdjectives/corpusData.issues.size() + "(todo)");
-		System.out.println("Avg(Med) Adverbs: " + totalAdverbs/corpusData.issues.size() + "(todo)");
+		int numIssues = corpusData.issues.size();
+		double medSentences = getMedianSentence(corpusData);
+		double medTerms = getMedianTerms(corpusData);
+		double medNouns = getMedianNouns(corpusData);
+		double medVerbs = getMedianVerbs(corpusData);
+		double medAdjectives = getMedianAdjectives(corpusData);
+		double medAdverbs = getMedianAdverbs(corpusData);
 		
+		System.out.println("Avg(Med) Sentences: " + totalSentences/numIssues + "(" + new DecimalFormat("#0.00").format(medSentences)  + ")");		
+		System.out.println("Avg(Med) Terms: " + totalTerms/numIssues + "(" + new DecimalFormat("#0.00").format(medTerms)  + ")");		
+		System.out.println("Avg(Med) Nouns: " + totalNouns/numIssues + "(" + new DecimalFormat("#0.00").format(medNouns)  + ")");
+		System.out.println("Avg(Med) Verbs: " + totalVerbs/numIssues + "(" + new DecimalFormat("#0.00").format(medVerbs)  + ")");
+		System.out.println("Avg(Med) Adjectives: " + totalAdjectives/numIssues + "(" + new DecimalFormat("#0.00").format(medAdjectives)  + ")");
+		System.out.println("Avg(Med) Adverbs: " + totalAdverbs/numIssues + "(" + new DecimalFormat("#0.00").format(medAdverbs)  + ")");
+	}
+	
+	private Double getMedianSentence(CorpusData corpusData)
+	{
+		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
+			public int compare(IssueData a, IssueData b)
+			{
+				if (a.numSentences > b.numSentences) {return 1;}
+				else if (a.numSentences < b.numSentences) {return -1;}
+				else {return 0;}			
+			}
+		});
 		
-		System.out.println("Top 10 For Corpus: TODO - print these values, need to sort the hashmaps");
-		System.out.println("Nouns: (todo)");
-		System.out.println("Verbs: (todo)");
-		System.out.println("Adjectives: (todo)");
-		System.out.println("Adverbs: (todo)");
+		int numIssues = corpusData.issues.size();
+		double medianValue = 0;
+		if (numIssues %2 == 0)
+		{
+			medianValue = (corpusData.issues.get(numIssues/2).numSentences + corpusData.issues.get(1+ (numIssues/2)).numSentences)/2;
+		}
+		else
+		{
+			medianValue = corpusData.issues.get(numIssues/2).numSentences;
+		}
 		
+		return medianValue;
+	}
+	
+	private Double getMedianTerms(CorpusData corpusData)
+	{
+		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
+			public int compare(IssueData a, IssueData b)
+			{
+				if (a.numTerms > b.numTerms) {return 1;}
+				else if (a.numTerms < b.numTerms) {return -1;}
+				else {return 0;}			
+			}
+		});
+		
+		int numIssues = corpusData.issues.size();
+		double medianValue = 0;
+		if (numIssues %2 == 0)
+		{
+			medianValue = (corpusData.issues.get(numIssues/2).numTerms + corpusData.issues.get(1+ (numIssues/2)).numTerms)/2;
+		}
+		else
+		{
+			medianValue = corpusData.issues.get(numIssues/2).numTerms;
+		}
+		
+		return medianValue;
+	}
+	
+	private Double getMedianNouns(CorpusData corpusData)
+	{
+		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
+			public int compare(IssueData a, IssueData b)
+			{
+				if (a.numNouns > b.numNouns) {return 1;}
+				else if (a.numNouns < b.numNouns) {return -1;}
+				else {return 0;}			
+			}
+		});
+		
+		int numIssues = corpusData.issues.size();
+		double medianValue = 0;
+		if (numIssues %2 == 0)
+		{
+			medianValue = (corpusData.issues.get(numIssues/2).numNouns + corpusData.issues.get(1+ (numIssues/2)).numNouns)/2;
+		}
+		else
+		{
+			medianValue = corpusData.issues.get(numIssues/2).numNouns;
+		}
+		
+		return medianValue;
+	}
+	
+	private Double getMedianVerbs(CorpusData corpusData)
+	{
+		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
+			public int compare(IssueData a, IssueData b)
+			{
+				if (a.numVerbs > b.numVerbs) {return 1;}
+				else if (a.numVerbs < b.numVerbs) {return -1;}
+				else {return 0;}			
+			}
+		});
+		
+		int numIssues = corpusData.issues.size();
+		double medianValue = 0;
+		if (numIssues %2 == 0)
+		{
+			medianValue = (corpusData.issues.get(numIssues/2).numVerbs + corpusData.issues.get(1+ (numIssues/2)).numVerbs)/2;
+		}
+		else
+		{
+			medianValue = corpusData.issues.get(numIssues/2).numVerbs;
+		}
+		
+		return medianValue;
+	}
+	
+	private Double getMedianAdjectives(CorpusData corpusData)
+	{
+		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
+			public int compare(IssueData a, IssueData b)
+			{
+				if (a.numAdjectives > b.numAdjectives) {return 1;}
+				else if (a.numAdjectives < b.numAdjectives) {return -1;}
+				else {return 0;}			
+			}
+		});
+		
+		int numIssues = corpusData.issues.size();
+		double medianValue = 0;
+		if (numIssues %2 == 0)
+		{
+			medianValue = (corpusData.issues.get(numIssues/2).numAdjectives + corpusData.issues.get(1+ (numIssues/2)).numAdjectives)/2;
+		}
+		else
+		{
+			medianValue = corpusData.issues.get(numIssues/2).numAdjectives;
+		}
+		
+		return medianValue;
+	}
+	
+	private Double getMedianAdverbs(CorpusData corpusData)
+	{
+		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
+			public int compare(IssueData a, IssueData b)
+			{
+				if (a.numAdverbs > b.numAdverbs) {return 1;}
+				else if (a.numAdverbs < b.numAdverbs) {return -1;}
+				else {return 0;}			
+			}
+		});
+		
+		int numIssues = corpusData.issues.size();
+		double medianValue = 0;
+		if (numIssues %2 == 0)
+		{
+			medianValue = (corpusData.issues.get(numIssues/2).numAdverbs + corpusData.issues.get(1+ (numIssues/2)).numAdverbs)/2;
+		}
+		else
+		{
+			medianValue = corpusData.issues.get(numIssues/2).numAdverbs;
+		}
+		
+		return medianValue;
 	}
 	
 	private void CoreNLPExample()
@@ -503,6 +661,16 @@ class Runner {
 		public long numVerbs;
 		public long numAdjectives;
 		public long numAdverbs;
+		
+		@Override
+		public String toString() {
+			return "IssueData [issueNumber=" + issueNumber + ", numSentences=" + numSentences + ", numTerms=" + numTerms
+					+ ", numNouns=" + numNouns + ", numVerbs=" + numVerbs + ", numAdjectives=" + numAdjectives
+					+ ", numAdverbs=" + numAdverbs + "]";
+		}
+		
+		
+		
 	}
 	
 	
