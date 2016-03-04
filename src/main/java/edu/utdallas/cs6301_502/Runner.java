@@ -1,13 +1,12 @@
 // ***************************************************************************
-// Assignment: 2
-// Team : 2
+// Assignment: 3
+// Team : 1
 // Team Members: Ryan Wiles, Erik Shreve
 //
 // Code reuse/attribution notes:
 // args4j (for command line parsing) based on example code from:
 // https://github.com/kohsuke/args4j/blob/master/args4j/examples/SampleMain.java
-// walkFolder method based on example code from:
-// https://lucene.apache.org/core/5_4_1/demo/src-html/org/apache/lucene/demo/IndexFiles.html
+//
 // ***************************************************************************
 package edu.utdallas.cs6301_502;
 
@@ -22,8 +21,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -295,11 +297,27 @@ class Runner {
 		printCorpusStats(titleAndDescriptionCorpusData);
 		System.out.println("--------------------------------------------------");
 		
-		System.out.println("Top 10 For System: TODO - print these values, need to COMBINE AND sort the hashmaps");
-		System.out.println("Nouns: (todo)");
-		System.out.println("Verbs: (todo)");
-		System.out.println("Adjectives: (todo)");
-		System.out.println("Adverbs: (todo)");
+		System.out.println("Top 10 For System (aka Title And Description Corpus):");
+		
+		System.out.println("Nouns: " + toStringTopX(titleAndDescriptionCorpusData.nounMap, 10));
+		System.out.println("Verbs: " + toStringTopX(titleAndDescriptionCorpusData.verbMap, 10));
+		System.out.println("Adjectives: " + toStringTopX(titleAndDescriptionCorpusData.adjectiveMap, 10));
+		System.out.println("Adverbs: " + toStringTopX(titleAndDescriptionCorpusData.adverbMap, 10));
+	}
+	
+	private <K, V extends Comparable<? super V>> String toStringTopX(Map<K,V> m, int x)
+	{
+		String output = "";
+		
+		Map<K, V> sorted = MapUtil.sortByValue(m);
+		
+		Iterator<Entry<K, V>> itr = sorted.entrySet().iterator();
+		for (int i = 0; i < x && i < sorted.size(); i++)
+		{
+			output +=  itr.next().getKey() + " ";
+		}
+		
+		return output;
 	}
 	
 	private void printCorpusStats(CorpusData corpusData)
@@ -672,6 +690,7 @@ class Runner {
 		
 		
 	}
+	
 	
 	
 	private void debug(String line) {
