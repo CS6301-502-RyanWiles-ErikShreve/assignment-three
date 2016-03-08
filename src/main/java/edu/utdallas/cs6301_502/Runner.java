@@ -53,6 +53,7 @@ import edu.stanford.nlp.util.CoreMap;
 import edu.utdallas.cs6301_502.jira.CorpusData;
 import edu.utdallas.cs6301_502.jira.IssueComparator;
 import edu.utdallas.cs6301_502.jira.IssueData;
+import edu.utdallas.cs6301_502.jira.JiraMarkupScrubber;
 
 class Runner {
 	@Option(name = "-d", usage = "print debug information to console")

@@ -1,4 +1,4 @@
-package edu.utdallas.cs6301_502;
+package edu.utdallas.cs6301_502.jira;
 
 public class JiraMarkupScrubber {
 	
