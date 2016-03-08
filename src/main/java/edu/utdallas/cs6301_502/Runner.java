@@ -113,8 +113,8 @@ class Runner {
 	public void run() {
 		try {
 			textScrubber = new TextScrubber(loadWords("stop_words.xml"), 2)
-					.addStopWords(loadWords("java_keywords.xml"))
-					.addPreProcessStopWords(loadWords("jira_notation_elements.xml"));
+					.addStopWords(loadWords("java_keywords.xml"));
+
 			
 			titleCorpusData = new CorpusData("Title Corpus");
 			descriptionCorpusData = new CorpusData("Description Corpus");
@@ -163,17 +163,18 @@ class Runner {
 			Issue issue = issuePromise.get();
 
 
-			String summary = textScrubber.scrubToString(issue.getSummary()); 
-			String description = textScrubber.scrubToString(issue.getDescription()); 
+			String summary = textScrubber.scrubToString(JiraMarkupScrubber.scrub(issue.getSummary())); 
+			String description = textScrubber.scrubToString(JiraMarkupScrubber.scrub(issue.getDescription()));
 
 			processData(titleCorpusData, issue.getId(), new String[] {summary});				
 			processData(descriptionCorpusData, issue.getId(), new String[] {description});				
 			processData(titleAndDescriptionCorpusData, issue.getId(), new String[] {summary, description});				
 
-			System.out.println(issue.getKey());
-			System.out.println("----------------------------");
-			System.out.println(description);
-			System.out.println("----------------------------");
+			//System.out.println(issue.getKey());
+			//System.out.println(issue.getDescription());
+			//System.out.println("----------------------------");
+			//System.out.println(description);
+			//System.out.println("----------------------------");
 		}
 		catch (Exception ex)
 		{
@@ -210,8 +211,8 @@ class Runner {
 			for (Issue issue : searchResult.getIssues()) {
 				totalIssuesRead++;
 							
-				String summary = textScrubber.scrubToString(issue.getSummary()); 
-				String description = textScrubber.scrubToString(issue.getDescription()); 
+				String summary = textScrubber.scrubToString(JiraMarkupScrubber.scrub(issue.getSummary())); 
+				String description = textScrubber.scrubToString(JiraMarkupScrubber.scrub(issue.getDescription()));
 				
 				processData(titleCorpusData, issue.getId(), new String[] {summary});				
 				processData(descriptionCorpusData, issue.getId(), new String[] {description});				
@@ -681,7 +682,7 @@ class Runner {
 		private String corpusName;
 		public List<IssueData> issues;
 		public int numEmptyIssues;
-		// TODO: Not sure if hashmap is best structure. We will need to sort these to get the top ten of each.
+		
 		HashMap<String, Long> nounMap;
 		HashMap<String, Long> verbMap;
 		HashMap<String, Long> adjectiveMap;

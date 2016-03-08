@@ -83,7 +83,7 @@ public class TextScrubber {
 		}
 
 		// explode punctuation to a space
-		text = text.replaceAll("[\\{|\\}|\\(|\\)|;|,|=|+|\\-|*|\"|'|/|\\?|:|<|\\[|\\]|!|\\>|\\^|\\$|\\&\\&|\\|\\||\\.|`|#|~|_]", " ").trim();
+		text = text.replaceAll("[\\{|\\}|\\(|\\)|=|+|\\-|*|<|\\[|\\]|\\>|\\^|\\$|\\&\\&|\\|\\||`|#|~|_]", " ").trim();
 		text = text.replaceAll("\\\\t", " ").trim();
 		text = text.replaceAll("\\\\r", " ").trim();
 		text = text.replaceAll("\\\\n", " ").trim();
