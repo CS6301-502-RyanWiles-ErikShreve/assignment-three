@@ -12,6 +12,7 @@ public class TextScrubber {
 	public int minWordSize;
 	private boolean stemWords = false;
 	private boolean includeCamelCase = false;
+	private boolean preserveHyphenatedWords = false;
 
 	public TextScrubber(Set<String> stopWords, int minWordSize) {
 		super();
@@ -39,6 +40,11 @@ public class TextScrubber {
 		return this;
 	}
 
+	public TextScrubber setPreserveHyphenatedWords(boolean preserveHyphenatedWords) {
+		this.preserveHyphenatedWords = preserveHyphenatedWords;
+		return this;
+	}
+	
 	public String scrubToString(String text)
 	{
 		StringBuilder output = new StringBuilder();
@@ -89,7 +95,12 @@ public class TextScrubber {
 		
 		
 		// explode punctuation to a space
-		text = text.replaceAll("[\\{|\\}|\\(|\\)|=|+|\\-|*|<|\\[|\\]|\\>|\\^|\\$|\\&\\&|\\|\\||`|#|~|_]", " ").trim();
+		text = text.replaceAll("[\\{|\\}|\\(|\\)|=|+|*|<|\\[|\\]|\\>|\\^|\\$|\\&\\&|\\|\\||`|#|~|_]", " ").trim();
+		
+		if (!preserveHyphenatedWords) {
+			text = text.replaceAll("\\-", " ").trim();
+		}
+		
 		text = text.replaceAll("\\\\t", " ").trim();
 		text = text.replaceAll("\\\\r", " ").trim();
 		text = text.replaceAll("\\\\n", " ").trim();
@@ -129,5 +140,4 @@ public class TextScrubber {
 
 		return output;
 	}
-
 }

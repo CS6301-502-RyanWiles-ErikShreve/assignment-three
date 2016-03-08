@@ -114,8 +114,8 @@ class Runner {
 		try {
 			textScrubber = new TextScrubber(loadWords("stop_words.xml"), 2)
 					.addStopWords(loadWords("java_keywords.xml"))
-					.addStopWords(loadWords("java_common_classes.xml"));
-
+					.addStopWords(loadWords("java_common_classes.xml"))
+					.setPreserveHyphenatedWords(true);
 			
 			titleCorpusData = new CorpusData("Title Corpus");
 			descriptionCorpusData = new CorpusData("Description Corpus");
