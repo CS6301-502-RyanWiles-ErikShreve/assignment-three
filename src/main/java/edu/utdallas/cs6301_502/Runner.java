@@ -171,11 +171,11 @@ class Runner {
 			processData(descriptionCorpusData, issue.getId(), new String[] {description});				
 			processData(titleAndDescriptionCorpusData, issue.getId(), new String[] {summary, description});				
 
-			//System.out.println(issue.getKey());
-			//System.out.println(issue.getDescription());
-			//System.out.println("----------------------------");
-			//System.out.println(description);
-			//System.out.println("----------------------------");
+			System.out.println(issue.getKey());
+			System.out.println(issue.getDescription());
+			System.out.println("----------------------------");
+			System.out.println(description);
+			System.out.println("----------------------------");
 		}
 		catch (Exception ex)
 		{
@@ -205,6 +205,10 @@ class Runner {
 					maxResults = Math.min(100, toRead);
 				}
 			}
+			else
+			{
+				maxResults = 100;
+			}
 						
 			Promise<SearchResult> searchJqlPromise = restClient.getSearchClient().searchJql("project = " + projectKey, maxResults, startIndex, null);
 			
@@ -225,7 +229,7 @@ class Runner {
 			}
 			
 			if (totalIssuesRead == searchResult.getTotal() ||
-				totalIssuesRead >= maxNumIssues)
+				(maxNumIssues > 0 && totalIssuesRead >= maxNumIssues))
 			{
 				done = true;
 			}

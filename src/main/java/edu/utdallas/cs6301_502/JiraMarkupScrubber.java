@@ -6,6 +6,8 @@ public class JiraMarkupScrubber {
 	static public String scrub(String text)
 	{
 		String output = text;
+		
+		if (text == null) {return "";}
 				
 		// Misc - done first as these are very specific sequences and some
 		// use characters used elsewhere.
