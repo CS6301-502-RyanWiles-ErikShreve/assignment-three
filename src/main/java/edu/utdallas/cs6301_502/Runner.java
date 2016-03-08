@@ -66,6 +66,9 @@ class Runner {
 
 	@Option(name = "-p", usage = "name of project on JIRA server")
 	private String projectName = "SPARK";
+
+	@Option(name = "-i", usage = "a specific issue number to process. If specified, -n is ignored.")
+	private int anIssue = 0;
 	
 	// receives other command line parameters than options
 	@Argument
@@ -135,7 +138,14 @@ class Runner {
 		final JiraRestClient restClient = factory.create(jiraServerUri, new AnonymousAuthenticationHandler());
 
 		try {
-			processAllIssues(restClient, projectName);
+			if (anIssue < 1)
+			{
+				processAllIssues(restClient, projectName);
+			}
+			else
+			{
+				proccessOneIssue(restClient, projectName, anIssue);
+			}
 		} finally {
 			try {
 				restClient.close();
@@ -145,6 +155,34 @@ class Runner {
 		}
 	}
 	
+	private void proccessOneIssue(JiraRestClient restClient, String projectKey, int anIssue) {
+		
+		try
+		{
+			Promise<Issue> issuePromise = restClient.getIssueClient().getIssue(projectKey + "-" + anIssue);
+			Issue issue = issuePromise.get();
+
+
+			String summary = textScrubber.scrubToString(issue.getSummary()); 
+			String description = textScrubber.scrubToString(issue.getDescription()); 
+
+			processData(titleCorpusData, issue.getId(), new String[] {summary});				
+			processData(descriptionCorpusData, issue.getId(), new String[] {description});				
+			processData(titleAndDescriptionCorpusData, issue.getId(), new String[] {summary, description});				
+
+			System.out.println(issue.getKey());
+			System.out.println("----------------------------");
+			System.out.println(description);
+			System.out.println("----------------------------");
+		}
+		catch (Exception ex)
+		{
+			ex.printStackTrace();
+		}
+		
+		
+	}
+
 	private void processAllIssues(JiraRestClient restClient, String projectKey) {
 		int startIndex = 0;
 		int maxResults = 0;
