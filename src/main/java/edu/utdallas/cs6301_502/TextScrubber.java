@@ -9,7 +9,7 @@ public class TextScrubber {
 
 	private Set<String> preProcessStopWords = new HashSet<String>();
 	private Set<String> stopWords = new HashSet<String>();
-	private int minWordSize;
+	public int minWordSize;
 	private boolean stemWords = false;
 	private boolean includeCamelCase = false;
 
@@ -41,14 +41,14 @@ public class TextScrubber {
 
 	public String scrubToString(String text)
 	{
-		String output = "";
+		StringBuilder output = new StringBuilder();
 		
 		for(String s: scrub(text))
 		{
-			output += " " + s;
+			output.append(" " + s);
 		}
 		
-		return output.trim();
+		return output.toString().trim();
 	}
 	
 	public List<String> scrub(String text) {
@@ -130,9 +130,4 @@ public class TextScrubber {
 		return output;
 	}
 
-	public static void main(String... args) {
-		for (String s : "nonCamelCased".split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])")) {
-			System.out.println(s);
-		}
-	}
 }

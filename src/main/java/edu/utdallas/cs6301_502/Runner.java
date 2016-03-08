@@ -18,8 +18,6 @@ import java.net.URI;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -28,8 +26,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -38,7 +36,6 @@ import org.kohsuke.args4j.Option;
 import com.atlassian.jira.rest.client.api.JiraRestClient;
 import com.atlassian.jira.rest.client.api.domain.BasicProject;
 import com.atlassian.jira.rest.client.api.domain.Issue;
-import com.atlassian.jira.rest.client.api.domain.Project;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import com.atlassian.jira.rest.client.auth.AnonymousAuthenticationHandler;
 import com.atlassian.jira.rest.client.internal.ServerVersionConstants;
@@ -53,6 +50,9 @@ import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 import edu.stanford.nlp.util.CoreMap;
+import edu.utdallas.cs6301_502.jira.CorpusData;
+import edu.utdallas.cs6301_502.jira.IssueComparator;
+import edu.utdallas.cs6301_502.jira.IssueData;
 
 class Runner {
 	@Option(name = "-d", usage = "print debug information to console")
@@ -124,9 +124,6 @@ class Runner {
 			
 			processJiraProject();
 			printStats();
-			
-			//CoreNLPExample();
-			//jiraExample();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -277,61 +274,42 @@ class Runner {
 				if (pos.startsWith("NN"))
 				{
 					id.numNouns++;
-					if (corpusData.nounMap.containsKey(token.lemma()))
-					{
-						corpusData.nounMap.put(token.lemma(), corpusData.nounMap.get(token.lemma()) + 1);
-					}
-					else
-					{
-						corpusData.nounMap.put(token.lemma(), (long) 1);
-					}
+					addToWordCountMap(corpusData.nounMap, token.lemma());
 				}
 				else if (pos.startsWith("VB"))
 				{
 					id.numVerbs++;
-					if (corpusData.verbMap.containsKey(token.lemma()))
-					{
-						corpusData.verbMap.put(token.lemma(), corpusData.verbMap.get(token.lemma()) + 1);
-					}
-					else
-					{
-						corpusData.verbMap.put(token.lemma(), (long) 1);
-					}
+					addToWordCountMap(corpusData.verbMap, token.lemma());
 				}				
 				else if (pos.startsWith("JJ"))
 				{
 					id.numAdjectives++;
-					if (corpusData.adjectiveMap.containsKey(token.lemma()))
-					{
-						corpusData.adjectiveMap.put(token.lemma(), corpusData.adjectiveMap.get(token.lemma()) + 1);
-					}
-					else
-					{
-						corpusData.adjectiveMap.put(token.lemma(), (long) 1);
-					}
+					addToWordCountMap(corpusData.adjectiveMap, token.lemma());
 				}
 				else if (pos.startsWith("RB"))
 				{
 					id.numAdverbs++;
-					if (corpusData.adverbMap.containsKey(token.lemma()))
-					{
-						corpusData.adverbMap.put(token.lemma(), corpusData.adverbMap.get(token.lemma()) + 1);
-					}
-					else
-					{
-						corpusData.adverbMap.put(token.lemma(), (long) 1);
-					}
+					addToWordCountMap(corpusData.adverbMap, token.lemma());
 				}
 				
-				
-				//System.out.println("POS: " + pos + "\t" + token.originalText());
 			}
 			
 		}
 		
 		corpusData.issues.add(id);
 	}
-	
+
+	private void addToWordCountMap(Map<String, Long> map, String string) {
+		if (map.containsKey(string))
+		{
+			map.put(string, map.get(string) + 1);
+		}
+		else
+		{
+			map.put(string, 1l);
+		}
+	}
+
 	private void printStats()
 	{
 		System.out.println("Results for " + projectName + " on " + jiraServerURL);
@@ -373,12 +351,6 @@ class Runner {
 		System.out.println("Number of Bug Reports with no data after preprocessing: " + corpusData.numEmptyIssues);
 		System.out.println("Number of Bug Reports in corpus: " + corpusData.issues.size());
 	
-		
-	//	for (IssueData i : corpusData.issues)
-	//	{
-	//		System.out.println(i.toString());
-	//	}
-		
 		long totalSentences = 0;
 		long totalTerms = 0;
 		long totalNouns = 0;
@@ -397,13 +369,13 @@ class Runner {
 		}
 		
 		int numIssues = corpusData.issues.size();
-		double medSentences = getMedianSentence(corpusData);
-		double medTerms = getMedianTerms(corpusData);
-		double medNouns = getMedianNouns(corpusData);
-		double medVerbs = getMedianVerbs(corpusData);
-		double medAdjectives = getMedianAdjectives(corpusData);
-		double medAdverbs = getMedianAdverbs(corpusData);
-		
+		double medSentences = calculateMedian(corpusData.issues, "numSentences");
+		double medTerms = calculateMedian(corpusData.issues, "numTerms");
+		double medNouns = calculateMedian(corpusData.issues, "numNouns");
+		double medVerbs = calculateMedian(corpusData.issues, "numVerbs");
+		double medAdjectives = calculateMedian(corpusData.issues, "numAdjectives");
+		double medAdverbs = calculateMedian(corpusData.issues, "numAdverbs");
+
 		System.out.println("Avg(Med) Sentences: " + totalSentences/numIssues + "(" + new DecimalFormat("#0.00").format(medSentences)  + ")");		
 		System.out.println("Avg(Med) Terms: " + totalTerms/numIssues + "(" + new DecimalFormat("#0.00").format(medTerms)  + ")");		
 		System.out.println("Avg(Med) Nouns: " + totalNouns/numIssues + "(" + new DecimalFormat("#0.00").format(medNouns)  + ")");
@@ -412,200 +384,24 @@ class Runner {
 		System.out.println("Avg(Med) Adverbs: " + totalAdverbs/numIssues + "(" + new DecimalFormat("#0.00").format(medAdverbs)  + ")");
 	}
 	
-	private Double getMedianSentence(CorpusData corpusData)
-	{
-		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
-			public int compare(IssueData a, IssueData b)
-			{
-				if (a.numSentences > b.numSentences) {return 1;}
-				else if (a.numSentences < b.numSentences) {return -1;}
-				else {return 0;}			
-			}
-		});
-		
-		int numIssues = corpusData.issues.size();
-		double medianValue = 0;
-		if (numIssues %2 == 0)
-		{
-			medianValue = (corpusData.issues.get(numIssues/2).numSentences + corpusData.issues.get(1+ (numIssues/2)).numSentences)/2;
-		}
-		else
-		{
-			medianValue = corpusData.issues.get(numIssues/2).numSentences;
-		}
-		
-		return medianValue;
-	}
-	
-	private Double getMedianTerms(CorpusData corpusData)
-	{
-		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
-			public int compare(IssueData a, IssueData b)
-			{
-				if (a.numTerms > b.numTerms) {return 1;}
-				else if (a.numTerms < b.numTerms) {return -1;}
-				else {return 0;}			
-			}
-		});
-		
-		int numIssues = corpusData.issues.size();
-		double medianValue = 0;
-		if (numIssues %2 == 0)
-		{
-			medianValue = (corpusData.issues.get(numIssues/2).numTerms + corpusData.issues.get(1+ (numIssues/2)).numTerms)/2;
-		}
-		else
-		{
-			medianValue = corpusData.issues.get(numIssues/2).numTerms;
-		}
-		
-		return medianValue;
-	}
-	
-	private Double getMedianNouns(CorpusData corpusData)
-	{
-		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
-			public int compare(IssueData a, IssueData b)
-			{
-				if (a.numNouns > b.numNouns) {return 1;}
-				else if (a.numNouns < b.numNouns) {return -1;}
-				else {return 0;}			
-			}
-		});
-		
-		int numIssues = corpusData.issues.size();
-		double medianValue = 0;
-		if (numIssues %2 == 0)
-		{
-			medianValue = (corpusData.issues.get(numIssues/2).numNouns + corpusData.issues.get(1+ (numIssues/2)).numNouns)/2;
-		}
-		else
-		{
-			medianValue = corpusData.issues.get(numIssues/2).numNouns;
-		}
-		
-		return medianValue;
-	}
-	
-	private Double getMedianVerbs(CorpusData corpusData)
-	{
-		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
-			public int compare(IssueData a, IssueData b)
-			{
-				if (a.numVerbs > b.numVerbs) {return 1;}
-				else if (a.numVerbs < b.numVerbs) {return -1;}
-				else {return 0;}			
-			}
-		});
-		
-		int numIssues = corpusData.issues.size();
-		double medianValue = 0;
-		if (numIssues %2 == 0)
-		{
-			medianValue = (corpusData.issues.get(numIssues/2).numVerbs + corpusData.issues.get(1+ (numIssues/2)).numVerbs)/2;
-		}
-		else
-		{
-			medianValue = corpusData.issues.get(numIssues/2).numVerbs;
-		}
-		
-		return medianValue;
-	}
-	
-	private Double getMedianAdjectives(CorpusData corpusData)
-	{
-		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
-			public int compare(IssueData a, IssueData b)
-			{
-				if (a.numAdjectives > b.numAdjectives) {return 1;}
-				else if (a.numAdjectives < b.numAdjectives) {return -1;}
-				else {return 0;}			
-			}
-		});
-		
-		int numIssues = corpusData.issues.size();
-		double medianValue = 0;
-		if (numIssues %2 == 0)
-		{
-			medianValue = (corpusData.issues.get(numIssues/2).numAdjectives + corpusData.issues.get(1+ (numIssues/2)).numAdjectives)/2;
-		}
-		else
-		{
-			medianValue = corpusData.issues.get(numIssues/2).numAdjectives;
-		}
-		
-		return medianValue;
-	}
-	
-	private Double getMedianAdverbs(CorpusData corpusData)
-	{
-		Collections.sort(corpusData.issues, new Comparator<IssueData>() {
-			public int compare(IssueData a, IssueData b)
-			{
-				if (a.numAdverbs > b.numAdverbs) {return 1;}
-				else if (a.numAdverbs < b.numAdverbs) {return -1;}
-				else {return 0;}			
-			}
-		});
-		
-		int numIssues = corpusData.issues.size();
-		double medianValue = 0;
-		if (numIssues %2 == 0)
-		{
-			medianValue = (corpusData.issues.get(numIssues/2).numAdverbs + corpusData.issues.get(1+ (numIssues/2)).numAdverbs)/2;
-		}
-		else
-		{
-			medianValue = corpusData.issues.get(numIssues/2).numAdverbs;
-		}
-		
-		return medianValue;
-	}
-	
-	@SuppressWarnings("unused")
-	private void CoreNLPExample()
-	{
-		// Begin NLP example code
-		String text = "This World is an amazing place, I was so amazed.";
-		Properties props = new Properties();
-		props.setProperty("annotators", "tokenize, ssplit, pos, lemma, parse, sentiment");
-		StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+	private Double calculateMedian(List<IssueData> issues, String fieldName) {
+		Collections.sort(issues, new IssueComparator(fieldName));
 
-		Annotation annotation = pipeline.process(text);
-		List<CoreMap> sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
-		for (CoreMap sentence : sentences) {
-		//	String sentiment = sentence.get(SentimentCoreAnnotations.SentimentClass.class);
-		//	System.out.println("Sentiment: " + sentiment + "\t" + sentence);
-			
-			for (CoreLabel token: sentence.get(TokensAnnotation.class))
-			{
-				String pos = token.get(PartOfSpeechAnnotation.class);
-				System.out.println("POS: " + pos + "\t" + token.originalText());
-			}
-			
-		}
-
-		for (String lemmas : lemmatize(pipeline, text)) {
-			System.out.println("Lemmas: " + lemmas);
-		}
-	}
-
-	@SuppressWarnings("unused")
-	private void jiraExample() throws InterruptedException, ExecutionException, IOException
-	{
-		URI jiraServerUri = URI.create(jiraServerURL);
-		final AsynchronousJiraRestClientFactory factory = new AsynchronousJiraRestClientFactory();
-		final JiraRestClient restClient = factory.create(jiraServerUri, new AnonymousAuthenticationHandler());
-
+		int numIssues = issues.size();
+		double medianValue = 0;
 		try {
-			Promise<Project> promiseProject = restClient.getProjectClient().getProject(projectName);
-			Project project = promiseProject.get();
-			System.out.println(project.getName() + ": " + project.getDescription());
-
-			printAllIssues(restClient, projectName);
-		} finally {
-			restClient.close();
+			if (numIssues % 2 == 0) {
+				long lower = Long.parseLong(BeanUtils.getSimpleProperty(issues.get(numIssues / 2), fieldName));
+				long upper = Long.parseLong(BeanUtils.getSimpleProperty(issues.get(1 + (numIssues / 2)), fieldName));
+				medianValue = (lower + upper) / 2;
+			} else {
+				medianValue = Long.parseLong(BeanUtils.getSimpleProperty(issues.get(numIssues / 2), fieldName));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
+
+		return medianValue;
 	}
 	
 	public void printAllIssues(JiraRestClient restClient, String projectKey) {
@@ -686,61 +482,7 @@ class Runner {
 		return lemmas;
 	}
 
-	class CorpusData
-	{
-		private String corpusName;
-		public List<IssueData> issues;
-		public int numEmptyIssues;
-		
-		HashMap<String, Long> nounMap;
-		HashMap<String, Long> verbMap;
-		HashMap<String, Long> adjectiveMap;
-		HashMap<String, Long> adverbMap;
-		
-		public CorpusData(String name) {
-			super();
-			
-			corpusName = name;
-			
-			issues = new ArrayList<IssueData>();
-			numEmptyIssues = 0;
-			nounMap = new HashMap<String, Long>();
-			verbMap = new HashMap<String, Long>();
-			adjectiveMap = new HashMap<String, Long>();
-			adverbMap = new HashMap<String, Long>();
-		}
-		
-		public String getName()
-		{
-			return corpusName;
-		}
-		
-		
-	}
-	
-	class IssueData
-	{
-		public long issueNumber;
-		public long numSentences;
-		public long numTerms;
-		public long numNouns;
-		public long numVerbs;
-		public long numAdjectives;
-		public long numAdverbs;
-		
-		@Override
-		public String toString() {
-			return "IssueData [issueNumber=" + issueNumber + ", numSentences=" + numSentences + ", numTerms=" + numTerms
-					+ ", numNouns=" + numNouns + ", numVerbs=" + numVerbs + ", numAdjectives=" + numAdjectives
-					+ ", numAdverbs=" + numAdverbs + "]";
-		}
-		
-		
-		
-	}
-	
-	
-	
+
 	@SuppressWarnings("unused")
 	private void debug(String line) {
 		if (this.debug) {
@@ -773,6 +515,7 @@ class Runner {
 		return words;
 	}
 
+	@SuppressWarnings("unused")
 	private String readResourceFile(String resourceName) {
 		ClassLoader classLoader = this.getClass().getClassLoader();
 		File file = new File(classLoader.getResource(resourceName).getFile());
