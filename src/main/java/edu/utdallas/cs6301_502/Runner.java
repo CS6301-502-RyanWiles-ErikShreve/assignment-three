@@ -172,8 +172,8 @@ class Runner {
 			for (Issue issue : searchResult.getIssues()) {
 				totalIssuesRead++;
 							
-				String summary = issue.getSummary(); // TODO preprocess summary using textscrubber
-				String description = issue.getDescription(); // TODO preprocess description using textscrubber
+				String summary = textScrubber.scrubToString(issue.getSummary()); 
+				String description = textScrubber.scrubToString(issue.getDescription()); 
 				
 				processData(titleCorpusData, issue.getId(), new String[] {summary});				
 				processData(descriptionCorpusData, issue.getId(), new String[] {description});				

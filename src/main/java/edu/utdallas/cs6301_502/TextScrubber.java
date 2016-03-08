@@ -39,6 +39,18 @@ public class TextScrubber {
 		return this;
 	}
 
+	public String scrubToString(String text)
+	{
+		String output = "";
+		
+		for(String s: scrub(text))
+		{
+			output += " " + s;
+		}
+		
+		return output.trim();
+	}
+	
 	public List<String> scrub(String text) {
 
 		PorterStemmer stemmer = new PorterStemmer();
