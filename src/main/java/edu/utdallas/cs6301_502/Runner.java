@@ -113,7 +113,8 @@ class Runner {
 	public void run() {
 		try {
 			textScrubber = new TextScrubber(loadWords("stop_words.xml"), 2)
-					.addStopWords(loadWords("java_keywords.xml"));
+					.addStopWords(loadWords("java_keywords.xml"))
+					.addStopWords(loadWords("java_common_classes.xml"));
 
 			
 			titleCorpusData = new CorpusData("Title Corpus");
@@ -211,6 +212,8 @@ class Runner {
 			for (Issue issue : searchResult.getIssues()) {
 				totalIssuesRead++;
 							
+				System.out.println(issue.getKey());
+				
 				String summary = textScrubber.scrubToString(JiraMarkupScrubber.scrub(issue.getSummary())); 
 				String description = textScrubber.scrubToString(JiraMarkupScrubber.scrub(issue.getDescription()));
 				
@@ -218,7 +221,7 @@ class Runner {
 				processData(descriptionCorpusData, issue.getId(), new String[] {description});				
 				processData(titleAndDescriptionCorpusData, issue.getId(), new String[] {summary, description});				
 					
-				System.out.println(issue.getKey());
+
 			}
 			
 			if (totalIssuesRead == searchResult.getTotal() ||
@@ -555,6 +558,7 @@ class Runner {
 		return medianValue;
 	}
 	
+	@SuppressWarnings("unused")
 	private void CoreNLPExample()
 	{
 		// Begin NLP example code
@@ -582,6 +586,7 @@ class Runner {
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private void jiraExample() throws InterruptedException, ExecutionException, IOException
 	{
 		URI jiraServerUri = URI.create(jiraServerURL);
@@ -732,6 +737,7 @@ class Runner {
 	
 	
 	
+	@SuppressWarnings("unused")
 	private void debug(String line) {
 		if (this.debug) {
 			System.out.println(line);
@@ -742,7 +748,7 @@ class Runner {
 		Set<String> words = new HashSet<String>();
 
 		ClassLoader classLoader = getClass().getClassLoader();
-		System.out.println("classloader == null: " + (classLoader == null));
+		//System.out.println("classloader == null: " + (classLoader == null));
 		File file = new File(classLoader.getResource(resource).getFile());
 
 		try {
@@ -750,7 +756,9 @@ class Runner {
 			while (reader.ready()) {
 				String line = reader.readLine().trim();
 				if (line.startsWith("<word>") && line.endsWith("</word>"))
-					words.add(line.substring(6, line.length() - 7));
+				{
+					words.add(line.substring(6, line.length() - 7).toLowerCase());
+				}
 
 			}
 			reader.close();
